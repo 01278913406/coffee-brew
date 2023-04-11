@@ -1,0 +1,112 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+    id 'kotlin-kapt'
+    id 'com.jaredsburrows.license'
+}
+
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+android {
+    signingConfigs {
+        if (keystoreProperties.containsKey('storeFile')) {
+            release {
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+                storeFile rootProject.file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+            }
+        }
+    }
+    namespace 'org.chicha.cofi.wearos'
+    compileSdk 33
+
+    defaultConfig {
+        applicationId "org.chicha.cofi"
+        minSdk 25
+        targetSdk 33
+        versionCode 130
+        versionName "1.9.1"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        resConfigs 'en', 'de', 'es', 'it', 'nl', 'nb', 'pl', 'tr'
+
+        vectorDrawables {
+            useSupportLibrary true
+        }
+
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig keystoreProperties.containsKey('storeFile') ?
+                    signingConfigs.release : signingConfigs.debug
+        }
+        debug {
+            debuggable true
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+    buildFeatures {
+        compose true
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion '1.4.0'
+    }
+    packagingOptions {
+        resources {
+            excludes += '/META-INF/{AL2.0,LGPL2.1}'
+        }
+    }
+}
+
+licenseReport {
+    generateCsvReport = false
+    generateHtmlReport = false
+    generateJsonReport = true
+    // These options are ignored for Java projects
+    copyHtmlReportToAssets = false
+    copyHtmlReportToAssets = false
+    copyJsonReportToAssets = true
+}
+
+dependencies {
+    implementation project(path: ':cofi-share')
+    implementation platform("androidx.compose:compose-bom:$compose_bom_version")
+
+    implementation 'androidx.core:core-ktx:1.9.0'
+    implementation 'com.google.android.gms:play-services-wearable:18.0.0'
+    implementation "androidx.wear:wear-remote-interactions:1.0.0"
+    implementation "androidx.wear.compose:compose-material:$wear_compose_version"
+    implementation "androidx.wear.compose:compose-foundation:$wear_compose_version"
+    implementation "androidx.wear.compose:compose-navigation:$wear_compose_version"
+    implementation "androidx.compose.ui:ui-tooling-preview"
+    implementation "androidx.compose.runtime:runtime-livedata"
+    implementation "com.google.android.horologist:horologist-compose-layout:0.2.5"
+    implementation "com.google.accompanist:accompanist-pager:0.28.0"
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.6.4'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.1'
+    implementation 'androidx.activity:activity-compose:1.7.0'
+    implementation "androidx.lifecycle:lifecycle-viewmodel-compose:2.6.1"
+    implementation "androidx.wear:wear-input:1.1.0"
+    implementation 'androidx.wear:wear:1.2.0'
+
+    androidTestImplementation "androidx.compose.ui:ui-test-junit4:1.4.0"
+    debugImplementation "androidx.compose.ui:ui-tooling"
+    debugImplementation "androidx.compose.ui:ui-test-manifest"
+    androidTestImplementation 'androidx.test:core:1.5.0'
+}

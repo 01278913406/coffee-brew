@@ -1,0 +1,198 @@
+plugins {
+    id 'com.android.application'
+    id 'kotlin-android'
+    id 'kotlin-kapt'
+    id 'com.jaredsburrows.license'
+}
+
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+android {
+    signingConfigs {
+        if (keystoreProperties.containsKey('storeFile')) {
+            release {
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+                storeFile rootProject.file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+            }
+        }
+    }
+
+    defaultConfig {
+        applicationId "org.chicha.cofi"
+        minSdkVersion 25
+        targetSdkVersion 33
+        compileSdk 33
+        versionCode 132
+        versionName "1.18.1"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        resConfigs 'en', 'de', 'es', 'fr', 'hi', 'it', 'nb', 'nl', 'pl', 'pt-rBR', 'tr', 'uk', 'zh'
+        testInstrumentationRunnerArguments clearPackageData: 'true'
+        manifestPlaceholders = [profileable: false]
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig keystoreProperties.containsKey('storeFile') ?
+                    signingConfigs.release : signingConfigs.debug
+        }
+
+        debug {
+            debuggable true
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
+
+        benchmark {
+            signingConfig signingConfigs.debug
+            minifyEnabled true
+            manifestPlaceholders["profileable"] = true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            applicationIdSuffix ".benchmark"
+            versionNameSuffix "-benchmark"
+        }
+    }
+
+    flavorDimensions "version"
+    productFlavors {
+        instant {
+            dimension "version"
+            versionCode android.defaultConfig.versionCode - 1
+            versionNameSuffix "-instant"
+            minSdkVersion 26
+        }
+        playStore {
+            dimension "version"
+        }
+        full {
+            dimension "version"
+            versionCode android.defaultConfig.versionCode
+        }
+    }
+
+    buildFeatures {
+        // Enables Jetpack Compose for this module
+        compose true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+
+    }
+
+
+    kotlinOptions {
+        jvmTarget = "11"
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.4.0"
+    }
+    packagingOptions {
+        resources {
+            excludes += ['META-INF/DEPENDENCIES',
+                         'META-INF/LICENSE',
+                         'META-INF/LICENSE.txt',
+                         'META-INF/license.txt',
+                         'META-INF/NOTICE',
+                         'META-INF/NOTICE.txt',
+                         'META-INF/notice.txt',
+                         'META-INF/ASL2.0',
+                         'META-INF/AL2.0',
+                         'META-INF/LGPL2.1',
+                         'META-INF/*.kotlin_module']
+        }
+    }
+
+
+    sourceSets {
+        // Adds exported schema location as test app assets.
+        androidTest.assets.srcDirs += files("$projectDir/schemas".toString())
+    }
+    namespace 'org.chicha.cofi'
+
+}
+
+licenseReport {
+    generateCsvReport = false
+    generateHtmlReport = false
+    generateJsonReport = true
+    // These options are ignored for Java projects
+    copyHtmlReportToAssets = false
+    copyHtmlReportToAssets = false
+    copyJsonReportToAssets = true
+}
+
+configurations {
+    ktlint
+}
+
+dependencies {
+    implementation project(path: ':cofi-share')
+    ktlint("com.pinterest:ktlint:0.48.2") {
+        attributes {
+            attribute(Bundling.BUNDLING_ATTRIBUTE, getObjects().named(Bundling, Bundling.EXTERNAL))
+        }
+    }
+    implementation platform("androidx.compose:compose-bom:$compose_bom_version")
+
+    instantImplementation('com.google.android.gms:play-services-instantapps:18.0.1')
+    playStoreImplementation 'com.google.android.gms:play-services-wearable:18.0.0'
+    playStoreImplementation "androidx.wear:wear-remote-interactions:1.0.0"
+    playStoreImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.6.4'
+
+    // Tooling support (Previews, etc.)
+    debugImplementation "androidx.compose.ui:ui-tooling"
+    implementation "androidx.compose.ui:ui-tooling-preview"
+
+    // Material Design
+    implementation "androidx.compose.material:material"
+    implementation "androidx.compose.material3:material3:1.1.0-beta01"
+    implementation "androidx.compose.material3:material3-window-size-class"
+
+    implementation 'com.github.KieronQuinn:MonetCompat:0.2.1'
+    implementation 'androidx.palette:palette-ktx:1.0.0'
+    // Navigation
+    implementation "androidx.navigation:navigation-compose:2.5.3"
+
+    // Integration with observables
+    implementation "androidx.compose.runtime:runtime-livedata"
+    // Jetpack Utils
+    implementation "com.google.accompanist:accompanist-flowlayout:0.26.4-beta"
+    implementation "com.google.accompanist:accompanist-systemuicontroller:0.26.4-beta"
+    implementation "com.google.accompanist:accompanist-navigation-animation:0.26.4-beta"
+    implementation "androidx.compose.animation:animation-graphics"
+
+    implementation "androidx.activity:activity-compose:1.7.0"
+
+    // UI Tests
+    androidTestImplementation "androidx.compose.ui:ui-test-junit4:1.4.0"
+    testImplementation 'junit:junit:4.13.2'
+}
+
+task ktlint(type: JavaExec, group: "verification") {
+    description = "Check Kotlin code style."
+    classpath = configurations.ktlint
+    mainClass.set("com.pinterest.ktlint.Main")
+    args "src/**/*.kt"
+    jvmArgs("--add-opens", "java.base/java.lang=ALL-UNNAMED")
+}
+check.dependsOn ktlint
+
+task ktlintFormat(type: JavaExec, group: "formatting") {
+    description = "Fix Kotlin code style deviations."
+    classpath = configurations.ktlint
+    mainClass.set("com.pinterest.ktlint.Main")
+    args "-F", "src/**/*.kt"
+    jvmArgs("--add-opens", "java.base/java.lang=ALL-UNNAMED")
+}
